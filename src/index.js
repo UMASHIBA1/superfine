@@ -90,8 +90,8 @@ var getKey = function (vnode) {
 
 // NOTE 実際に更新を行う関数っぽい
 var patchNode = function (parent, node, oldVNode, newVNode, isSvg) {
-  // parent: DOMの追加先のparentNode, ←変更、コード見た感じDOMの追加先
-  // node: DOMの追加先, ←変更、oldVNodeに対応するDOM参照
+  // parent: DOMの追加先
+  // node: oldVNodeに対応するDOM参照
   // oldVNode: 変更前のVNodeが入る
   // newVNode: 変更したVNodeが入る
 
@@ -108,7 +108,6 @@ var patchNode = function (parent, node, oldVNode, newVNode, isSvg) {
   }
   // NOTE 1. 対象要素の追加、削除、種類入れ替えの場合(divとかがspanになってる等、要素自体が違う場合はdivを破棄してspanを追加する処理をする)
   else if (oldVNode == null || oldVNode.name !== newVNode.name) {
-    // XXX なぜdocument.getElementByIdで取得した要素の前に新しいNodeを追加してるのか謎 ←一応parentの解釈を変えた
     node = parent.insertBefore(createNode(newVNode, isSvg), node);
     if (oldVNode != null) {
       parent.removeChild(oldVNode.node);
@@ -155,9 +154,9 @@ var patchNode = function (parent, node, oldVNode, newVNode, isSvg) {
     // NOTE ※superfineはReactと同じように並列的な要素にkeyを使う
     // 普通の要素はkeyのプロパティはundefinedになってる
 
-    // NOTE 子要素をchildrenリストの前の方から探索していって
+    // NOTE keyを持つ子要素をchildrenリストの前の方から探索していって
     // できるところ(newVNodeの方で削除とか追加されてたりして
-    // その要素が比較できなくなるまで)まで更新している
+    // その要素が比較できなくなる、もしくはkey=undefinedまで)まで更新している
     // NOTE ※ちなみにkeyを持たない要素でもkeyがundefinedになっていて一致するためここでpatch処理がされる
     while (newHead <= newTail && oldHead <= oldTail) {
       if (
@@ -176,9 +175,9 @@ var patchNode = function (parent, node, oldVNode, newVNode, isSvg) {
       );
     }
 
-    // NOTE keyを持つ子要素をchildrenリストの前の方から探索していって
+    // NOTE keyを持つ子要素をchildrenリストの後の方から探索していって
     // できるところ(newVNodeの方で削除とか追加されてたりして
-    // その要素が比較できなくなるまで)まで更新している
+    // その要素が比較できなくなる、もしくはkey=undefinedまで)まで更新している
     // NOTE ※ちなみにkeyを持たない要素でもkeyがundefinedになっていて一致するためここでpatch処理がされる
     while (newHead <= newTail && oldHead <= oldTail) {
       if (
@@ -197,7 +196,7 @@ var patchNode = function (parent, node, oldVNode, newVNode, isSvg) {
       );
     }
 
-    // NOTE oldHeadがoldTailより大きい場合、変更後のVNodeで要素が1つ増えていることを示す
+    // NOTE oldHeadがoldTailより大きい場合、変更後のVNodeで要素が連続で増えていることを示す
     // なので、追加されていた順番の位置に要素を追加する
     if (oldHead > oldTail) {
       while (newHead <= newTail) {
@@ -207,7 +206,7 @@ var patchNode = function (parent, node, oldVNode, newVNode, isSvg) {
         );
       }
     }
-    // NOTE newHeadがnewTailより大きい場合、変更後のVNodeで要素が1つ減っていることを示す
+    // NOTE newHeadがnewTailより大きい場合、変更後のVNodeで要素が連続で減っていることを示す
     // なので減った要素をDOMから削除する
     else if (newHead > newTail) {
       while (oldHead <= oldTail) {
@@ -215,7 +214,7 @@ var patchNode = function (parent, node, oldVNode, newVNode, isSvg) {
       }
     }
 
-    // NOTE 子要素で二つ以上要素追加もしくは削除した場合
+    // NOTE 子要素で二つ以上離れた順番で要素追加もしくは削除した場合
     else {
       // NOTE 準備として上のwhile文で更新できていない子要素でkeyを持つものを全てkeyedというオブジェクトに保存する
       for (var i = oldHead, keyed = {}, newKeyed = {}; i <= oldTail; i++) {
@@ -304,7 +303,8 @@ var patchNode = function (parent, node, oldVNode, newVNode, isSvg) {
         }
       }
 
-      // NOTE keyを持ってた変更前要素のうち、削除されたものをここで一気に消す
+      // NOTE keyを持ってた変更前要素のうち、それが削除しても良いものなのか全部確認する
+      // そして削除してよいモノだったら削除する
       for (var i in keyed) {
         if (newKeyed[i] == null) {
           node.removeChild(keyed[i].node);
